@@ -20,8 +20,23 @@ from .plotting.animation import (
     linear,
     stitch_gif_animation,
 )
-from .plotting.static import plot
 from .shapes.bases.shape import Shape
+
+
+class DataContainer:
+    """
+    Simple container for the data, the frame #, etc.
+    """
+
+    __slots__ = ['data', 'path_image', 'path_data', 'decimals', 'x_bounds', 'y_bounds']
+
+    def __init__(self, data, path_image, path_data, decimals, x_bounds, y_bounds):
+        self.data = data
+        self.path_data = path_image
+        self.path_data = path_data
+        self.decimals = decimals
+        self.x_bounds = x_bounds
+        self.y_bounds = y_bounds
 
 
 class DataMorpher:
@@ -115,6 +130,9 @@ class DataMorpher:
             )
         self.num_frames = num_frames
         """int: The number of frames to capture. Must be > 0 and <= 100."""
+
+        self._frames: list[DataContainer] = []
+        """The frames to record"""
 
         self._looper = tqdm.tnrange if in_notebook else tqdm.trange
 
@@ -213,28 +231,21 @@ class DataMorpher:
             The next frame number available for recording.
         """
         if self.write_images or self.write_data:
-            is_start = frame_number == 0
             for _ in range(count):
-                if self.write_images:
-                    plot(
+                self._frames.append(
+                    DataContainer(
                         data,
-                        save_to=(
+                        path_image=(
                             self.output_dir
                             / f'{base_file_name}-image-{frame_number:03d}.png'
                         ),
+                        path_data=self.output_dir
+                        / f'{base_file_name}-data-{frame_number:03d}.csv',
                         decimals=self.decimals,
                         x_bounds=bounds.x_bounds,
                         y_bounds=bounds.y_bounds,
-                        dpi=150,
                     )
-                if (
-                    self.write_data and not is_start
-                ):  # don't write data for the initial frame (input data)
-                    data.to_csv(
-                        self.output_dir
-                        / f'{base_file_name}-data-{frame_number:03d}.csv',
-                        index=False,
-                    )
+                )
 
                 frame_number += 1
         return frame_number

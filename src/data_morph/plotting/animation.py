@@ -1,70 +1,75 @@
 """Utility functions for animations."""
 
-import glob
 import math
 from functools import wraps
 from pathlib import Path
 from typing import Callable, Union
 
-from PIL import Image
-
 from ..shapes.bases.shape import Shape
 
 
-def stitch_gif_animation(
-    output_dir: Union[str, Path],
-    start_shape: str,
-    target_shape: Union[str, Shape],
-    keep_frames: bool = False,
-    forward_only_animation: bool = False,
-) -> None:
+class AnimationFrame:
     """
-    Stitch frames together into a GIF animation.
-
-    Parameters
-    ----------
-    output_dir : str or pathlib.Path
-        The output directory to save the animation to. Note that the frames to
-        stitch together must be in here as well.
-    start_shape : str
-        The starting shape.
-    target_shape : str or Shape
-        The target shape for the morphing.
-    keep_frames : bool, default ``False``
-        Whether to keep the individual frames after creating the animation.
-    forward_only_animation : bool, default ``False``
-        Whether to only play the animation in the forward direction rather than
-        animating in both forward and reverse.
-
-    See Also
-    --------
-    PIL.Image
-        Frames are stitched together with Pillow.
+    Simple container for the data, the frame #, etc.
     """
-    output_dir = Path(output_dir)
 
-    # find the frames and sort them
-    imgs = sorted(glob.glob(str(output_dir / f'{start_shape}-to-{target_shape}*.png')))
+    __slots__ = ['data', 'decimals', 'x_bounds', 'y_bounds']
 
-    frames = [Image.open(img) for img in imgs]
+    def __init__(self, data, decimals, x_bounds, y_bounds):
+        self.data = data
+        self.decimals = decimals
+        self.x_bounds = x_bounds
+        self.y_bounds = y_bounds
 
-    if not forward_only_animation:
-        # add the animation in reverse
-        frames.extend(frames[::-1])
+    def stitch_gif_animation(
+        self,
+        output_dir: Union[str, Path],
+        start_shape: str,
+        target_shape: Union[str, Shape],
+        keep_frames: bool = False,
+        forward_only_animation: bool = False,
+    ) -> None:
+        """
+        Stitch frames together into a GIF animation.
 
-    frames[0].save(
-        output_dir / f'{start_shape}_to_{target_shape}.gif',
-        format='GIF',
-        append_images=frames[1:],
-        save_all=True,
-        duration=5,
-        loop=0,
-    )
+        Parameters
+        ----------
+        output_dir : str or pathlib.Path
+            The output directory to save the animation to. Note that the frames to
+            stitch together must be in here as well.
+        start_shape : str
+            The starting shape.
+        target_shape : str or Shape
+            The target shape for the morphing.
+        keep_frames : bool, default ``False``
+            Whether to keep the individual frames after creating the animation.
+        forward_only_animation : bool, default ``False``
+            Whether to only play the animation in the forward direction rather than
+            animating in both forward and reverse.
 
-    if not keep_frames:
-        # remove the image files
-        for img in imgs:
-            Path(img).unlink()
+        See Also
+        --------
+        PIL.Image
+            Frames are stitched together with Pillow.
+        """
+        output_dir = Path(output_dir)
+
+        # find the frames and sort them
+
+        if not forward_only_animation:
+            # add the animation in reverse
+            self.data.extend(self.data[::-1])
+
+        # TODO fix this since a list doesn't have a `save` method, but a PIL
+        # image does
+        self.data[0].save(
+            output_dir / f'{start_shape}_to_{target_shape}.gif',
+            format='GIF',
+            append_images=self.data[1:],
+            save_all=True,
+            duration=5,
+            loop=0,
+        )
 
 
 def check_step(
